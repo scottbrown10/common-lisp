@@ -18,6 +18,7 @@
           (let* ((group-size (expt 2 column))
                  (groups (floor (/ (1+ n) group-size)))
                  (leftover (mod (1+ n) group-size)))
+            (break)
             (incf ones
                   (+
                     ; half of each of these groups has a 1 in this column

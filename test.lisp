@@ -30,3 +30,12 @@ h
 j
 (defconstant i 2)
 (defconstant i 3)
+(parse-integer "1.5" :junk-allowed t)
+(loop for i from 10 downto 5 collect i)
+(loop repeat 5 collect 9)
+(let (#'42) (+ . #'5))
+(#'5)
+shiftf
+(boole boole-set 0 0)
+(read)
+(parse-integer "11111" :radix 2)

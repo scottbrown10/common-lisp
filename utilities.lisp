@@ -1,7 +1,7 @@
 (defpackage util
   (:use :cl)
   (:export
-
+    choose
     )
   )
 (in-package util)
@@ -434,20 +434,22 @@ Return the element and its predicate result"
     ))
 
 (defun factorial (n)
-  (if (<= n 1) 1 (* n (factorial (1- n)))))
+  (if (<= n 1) 1
+    (do ((cnt 1 (1+ cnt))
+         (product 1 (* product cnt)))
+      ((> cnt n) product))))
 
 (defun choose (n k)
   (if (< n k) 0
     (/ (factorial n) (factorial k) (factorial (- n k)))))
 
-(let ((lst '(0 1)))
-  (defun fib (&optional n)
-    (cond (n
-            (let ((num (nth n lst)))
-              (if num num
-                (let ((next (+ (fib (- n 2)) (fib (1- n)))))
-                  (conc1 lst next) next))))
-          (t (princ lst) (fresh-line)))))
+(defun fib (&optional n)
+  (cond (n
+          (let ((num (nth n lst)))
+            (if num num
+              (let ((next (+ (fib (- n 2)) (fib (1- n)))))
+                (conc1 lst next) next))))
+        (t (princ lst) (fresh-line))))
 
 (defun catalan (n)
   (/ (factorial (* 2 n)) (* (factorial (1+ n)) (factorial n))))
@@ -527,3 +529,48 @@ Return the element and its predicate result"
                  :weight 10
                  :shape 'square))
 
+(defun :bin (value &optional (size 8))
+  "Print an integer in 2's complement binary"
+  (format t "~v,'0b~%" size (ldb (byte size 0) value)))
+
+(defun :hex (value &optional (size 4))
+  "Print an integer in hex"
+  (format t "~v,'0x~%" size value))
+
+(defun power-of-2-p (n)
+  "True if there exists an x such that 2**x = n, (equivalently, n has only one 1 bit)"
+  (and (not (zerop n)) (zerop (boole boole-and n (1- n)))))
+
+(proclaim '(inline num-0-bits))
+
+(defun num-0-bits (n)
+  "Count number of 0 bits before the leftmost 1 bit"
+  (- (integer-length n) (logcount n)))
+
+(defun all-1s-p (n)
+  "True if there exists an x such that 2**x - 1= n (equivalently, n matches pattern 0*1*)"
+  (= (integer-length n) (logcount n)))
+
+; (funcall (highest-multiple-of-m-below-n 4) 13)
+
+; (add-all-ones-upto 8)
+; (add-all-ones-upto -2)
+; (:bin -1 32)
+
+; (loop for i from -1 downto -9 do (:bin i 4))
+; (loop for i below 8 do (:bin i 4))
+; (loop for i below 32 do (:bin i 5))
+
+(defun highest-multiple-of-m-below-n (m)
+  "Returns a function that returns than highest multiple of m that is <= the given n"
+  (lambda (n) (- n (mod n m))))
+
+(defun f0 (n)
+  (floor (/ (1+ n) 2)))
+(f 7)
+(loop for i below 16 do (:bin i 4))
+(defun f1 (n)
+  (if (= 3 (mod (1+ n) 4))
+  (1+ (* 2 (floor (/ (1+ n) 4))))
+  (* 2 (floor (/ (1+ n) 4)))))
+(f1 7)
