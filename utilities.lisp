@@ -2,11 +2,12 @@
   (:use :cl)
   (:export
     choose
+    append1
     )
   )
 (in-package util)
 
-(proclaim '(inline last1 single append1 conc1 mklist sum))
+(declaim (inline last1 single append1 conc1 mklist sum list-to-vector))
 
 (defun sum (lst)
   (apply #'+ lst))
@@ -344,10 +345,39 @@ Return the element and its predicate result"
                (mapcar #'(lambda (x) (funcall fn x y)) xlist))
            ylist))
 
-(defun permutations (lst)
+(defun permutations-r (lst)
+  "Recursively generate list of all permutations of lst"
   (if (null lst) '(())
     (mappend #'(lambda (x)
-                   (mapcar #'(lambda (y) (cons x y)) (permutations (remove x lst :count 1)))) lst)))
+                 (mapcar #'(lambda (y) (cons x y))
+                         (permutations (remove x lst :count 1))))
+             lst)))
+
+(defun permutations-i (lst) ;;; TODO
+  "Iteratively generate list of all permutations of lst"
+  (let ((results '()))
+    (loop for e1 in lst do
+         (loop for e2 in lst do
+               (loop for e3 in lst do
+                     (when (/= e1 e2 e3)
+                       (setq results (append results `(,`(,e1 ,e2 ,e3))))))))
+                     ; (setq results (append results (list (list e1 e2 e3))))))))
+    results))
+
+; (let ((code '(+)))
+;   (loop for i below 5 do (setq code (append code `(,(gensym)))))
+;   `,code)
+; (eval *)
+
+; (defun perms-i (lst)
+;   (let ((vars (loop for i in lst collect (gensym))))
+;     (macrolet ((mac (var) `(loop for ,var in lst do
+;                                 (when (/= ,var)
+;                                   (setq results (append results '(1)))))))
+;      )))
+
+; (setq a (perms-i '(1 2 3)))
+; (funcall a)
 
 (defun subsets (lst)
   (if (null lst) '(())
@@ -551,26 +581,25 @@ Return the element and its predicate result"
   "True if there exists an x such that 2**x - 1= n (equivalently, n matches pattern 0*1*)"
   (= (integer-length n) (logcount n)))
 
-; (funcall (highest-multiple-of-m-below-n 4) 13)
-
-; (add-all-ones-upto 8)
-; (add-all-ones-upto -2)
-; (:bin -1 32)
-
-; (loop for i from -1 downto -9 do (:bin i 4))
-; (loop for i below 8 do (:bin i 4))
-; (loop for i below 32 do (:bin i 5))
-
 (defun highest-multiple-of-m-below-n (m)
   "Returns a function that returns than highest multiple of m that is <= the given n"
   (lambda (n) (- n (mod n m))))
 
-(defun f0 (n)
-  (floor (/ (1+ n) 2)))
-(f 7)
-(loop for i below 16 do (:bin i 4))
-(defun f1 (n)
-  (if (= 3 (mod (1+ n) 4))
-  (1+ (* 2 (floor (/ (1+ n) 4))))
-  (* 2 (floor (/ (1+ n) 4)))))
-(f1 7)
+(defun list-to-vector (lst)
+  "Convert lst to a vector"
+  (map 'vector #'identity lst))
+
+(defun print-hash-table (ht)
+  (loop for value being the hash-values of ht using (hash-key key) do (format t "~a ~a~%" key value)))
+
+(defun print-hash-table-values (ht)
+  (loop for value being the hash-values of ht do (format t "~a~%" value)))
+
+(defun print-hash-table-keys (ht)
+  (loop for key being the hash-keys of ht do (format t "~a~%" key)))
+
+(setq h (make-hash-table))
+(setf (gethash 1 h) 2)
+(setf (gethash 3 h) 4)
+(print-hash-table-values h)
+(print-hash-table-keys h)
