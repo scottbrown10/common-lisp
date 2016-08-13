@@ -7,7 +7,9 @@
   )
 (in-package util)
 
-(declaim (inline last1 single append1 conc1 mklist sum list-to-vector))
+(declaim
+  (optimize debug)
+  (inline last1 single append1 conc1 mklist sum list-to-vector))
 
 (defun sum (lst)
   (apply #'+ lst))
@@ -105,6 +107,7 @@ Return the element and its predicate result"
       (push (car src) acc))))
 
 (defun most (fn lst)
+  "A max function that uses the fn as the key to compare values in lst. Returns the max object and (fn obj)"
   (if (null lst)
     (values nil nil)
     (let* ((wins (car lst))
@@ -353,31 +356,47 @@ Return the element and its predicate result"
                          (permutations (remove x lst :count 1))))
              lst)))
 
-(defun permutations-i (lst) ;;; TODO
-  "Iteratively generate list of all permutations of lst"
-  (let ((results '()))
-    (loop for e1 in lst do
-         (loop for e2 in lst do
-               (loop for e3 in lst do
-                     (when (/= e1 e2 e3)
-                       (setq results (append results `(,`(,e1 ,e2 ,e3))))))))
-                     ; (setq results (append results (list (list e1 e2 e3))))))))
-    results))
+(defun permutations-i (lst)
+  "Iteratively generate list of all permutations of lst
+   Heap's algorithm"
+  (format t "~a~%" lst)
+  (let ((arr (make-array (length lst) :initial-element 0)))
+    (loop for i below (length lst) do
+          (cond ((< (aref arr i) i)
+                 (if (evenp i)
+                   (rotatef (nth 0 lst) (nth i lst))
+                   (rotatef (nth (aref arr i) lst) (nth i lst)))
+                 (format t "~a~%" lst)
+                 (incf (aref arr i))
+                 (setq i 0))
+                (t (setf (aref arr i) 0))))))
 
-; (let ((code '(+)))
-;   (loop for i below 5 do (setq code (append code `(,(gensym)))))
-;   `,code)
-; (eval *)
 
-; (defun perms-i (lst)
-;   (let ((vars (loop for i in lst collect (gensym))))
-;     (macrolet ((mac (var) `(loop for ,var in lst do
-;                                 (when (/= ,var)
-;                                   (setq results (append results '(1)))))))
-;      )))
-
-; (setq a (perms-i '(1 2 3)))
-; (funcall a)
+; TODO add a param for the sort function so it can be used for any data type
+(defun permutation-enumerator (lst &optional (start))
+  "Returns a function that returns the next permutation of lst (in lexicographic order) when called,
+   and nil when permutations are exhausted.
+   If start is non-nil, the permutations start from the first lexicographic one (in other words, lst is sorted before supply permutations). Else, it starts from lst as is.
+   Algorithm from https://en.wikipedia.org/wiki/Permutation#Algorithms_to_generate_permutations"
+  (let ((once))
+    (if start (setq lst (sort lst #'<)))
+    (labels ((fn ()
+               ; return the given permutation at first
+               (unless once (setq once t) (return-from fn lst))
+               (let ((j) (j-val) (k))
+                 (setq j (loop for i from (1- (length lst)) downto 1
+                               for j = (1- i)
+                               for x = (nth i lst)
+                               for y = (nth j lst)
+                               thereis (when (< y x) (setq j-val y) j)))
+                 (unless j (return-from fn))
+                 (setq k (loop for k from (1- (length lst)) downto (1+ j)
+                               for x = (nth k lst)
+                               thereis (when (< j-val x) k)))
+                 (rotatef (nth j lst) (nth k lst))
+                 (rplacd (nthcdr j lst) (reverse (nthcdr (1+ j) lst)))
+                 lst)))
+      #'fn)))
 
 (defun subsets (lst)
   (if (null lst) '(())
@@ -394,7 +413,7 @@ Return the element and its predicate result"
     my-set))
 
 (defun remove-nils (lst)
-  (remove-if-not #'(lambda (x) x) lst))
+  (remove-if-not #'identity lst))
 
 (defun subset-enumerator (lst &optional (n 0))
   "Returns a function that returns the next subset when called.
