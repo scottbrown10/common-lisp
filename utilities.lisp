@@ -317,12 +317,6 @@ Return the element and its predicate result"
         (sort (string-to-char-code str2) #'<))
     t '()))
 
-; (let ((n 0)
-;       (x (list 'a 'b 'c 'd 'e 'f 'g)))
-;   (rotatef (nth (incf n) x)
-;            (nth (incf n) x))
-;   x)
-
 (defun count-atoms (expr)
   "Count the number of atoms in expr"
   (cond ((null expr) 0)
@@ -371,6 +365,14 @@ Return the element and its predicate result"
                  (setq i 0))
                 (t (setf (aref arr i) 0))))))
 
+(defun permutations (items)
+  "Given a list of items, returns all possible permutations of the list."
+  (let ((result nil))
+    (if (null items)
+        '(nil)
+        (dolist (item items result)
+          (dolist (permutation (permutations (remove item items :count 1)))
+            (push (cons item permutation) result))))))
 
 ; TODO add a param for the sort function so it can be used for any data type
 (defun permutation-enumerator (lst &optional (start))
@@ -398,13 +400,20 @@ Return the element and its predicate result"
                  lst)))
       #'fn)))
 
-(defun subsets (lst)
+(defun powerset (lst)
   (if (null lst) '(())
     (let ((subs (subsets (cdr lst)))
           (front (car lst)))
       (append
         (mappend #'(lambda (x) (list (cons front x))) subs)
         subs))))
+
+(defun powerset (list)
+  "Given a set, returns the set of all subsets of the set."
+  (let ((result (list nil)))
+    (dolist (item list result)
+      (dolist (subset result)
+	(push (cons item subset) result)))))
 
 (defun string-to-char-set (str)
   "Turn a string into a set of chars"
@@ -617,8 +626,80 @@ Return the element and its predicate result"
 (defun print-hash-table-keys (ht)
   (loop for key being the hash-keys of ht do (format t "~a~%" key)))
 
-(setq h (make-hash-table))
-(setf (gethash 1 h) 2)
-(setf (gethash 3 h) 4)
-(print-hash-table-values h)
-(print-hash-table-keys h)
+(defun split-string (str delim)
+  "Split str into list of strings seperated by delim"
+  (labels
+    ((fn (str lst)
+       (let ((pos (position delim str)))
+         (if pos
+           (progn
+             (when (plusp (length (subseq str 0 pos))) (push (subseq str 0 pos) lst)) ; don't add empty string
+             (fn (subseq str (1+ pos)) lst))
+           (progn
+             (when (plusp (length str)) (push str lst)) ; don't add empty string
+             lst)))))
+    (fn str nil)))
+
+(defun nth-from-end (n list)
+  (let* ((length (length list))
+         (delta (- length n)))
+    (unless (minusp delta)
+      (nth delta list))))
+
+;;; Copyright (c): Forschungsgruppe DRUID, Hubertus Hohl
+;;;                Universitaet Stuttgart
+
+;; set a place to the max/min of itself and the given values
+(define-modify-macro maxf (&rest maxima) max)
+(define-modify-macro minf (&rest minima) min)
+
+;; delete elements of list that are in sublist
+(defun delete-all (sublist list)
+  (delete-if #'(lambda (slot) (member slot sublist :test #'eq))
+	     list))
+
+; Tom Kramer
+; kramer@cme.nist.gov
+; 2/15/93
+(defun mapt (func liz &optional val)
+ "If val is nil or missing, mapt returns a list of all those elements of
+ the list 'liz' for which (func element) is non-nil.
+ If val is non-nil, mapt returns a list of all values of (func element)
+ which are non-nil, in the same order as the elements."
+  (cond (val
+	 (mapcan #'(lambda (x)
+		     (cond ((setq val (funcall func x)) (list val)))) liz))
+	(t
+	 (mapcan #'(lambda (x)
+		     (cond ((funcall func x) (list x)))) liz))))
+
+#|
+Example 1 - (mapt #'numberp '(a 1 4 b c 2.3)) ==> (1 4 2.3)
+
+Example 2 - (mapt #'(lambda (item) (cond ((numberp item) (1+ item))))
+                    '(a 1 4 b c 2.3) t) ==> (2 5 3.3)
+|#
+
+(defmacro push-end (new-item list-end)
+  "Like push, except it adds a new-item at the end of
+   a list, not the beginning, and the second argument (list-end) is a
+   pointer to the last item on the list, not the first.  list-end is
+   reset so that it points at the new last item.  To make use of this
+   function, some other variable is normally set to point at the front
+   of the list.
+
+   Using this macro to add items at the end of a long list is much
+   faster than nconc'ing the list with a list of the new item, because
+   nconc'ing requires traversing the entire list.  "
+  `(nconc ,list-end (setq ,list-end (list ,new-item))))
+
+#|
+Example:
+(setq liz '(1 2 3)) => (1 2 3)
+(setq lass (last liz)) => (3)
+(push-end 4 lass) => (3 4)     -- the returned value is not usually used
+liz => (1 2 3 4)
+(push-end 5 lass) => (4 5)
+liz => (1 2 3 4 5)
+|#
+

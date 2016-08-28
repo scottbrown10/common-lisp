@@ -1,0 +1,15 @@
+(let ((cache (make-hash-table))
+      (step 4)
+      (dots 1)
+      (level 1))
+  (setf (gethash level cache) dots)
+  (defun pentagonal (n)
+    (let ((result (gethash n cache)))
+      (if result result
+      (do () ((= level n) dots)
+        (setq dots (+ dots step))
+        (setq level (1+ level))
+        (setf (gethash level cache) dots)
+        (setq step (+ step 3)))))))
+
+(loop for i below (read) do (format t "~a~%" (pentagonal (read))))

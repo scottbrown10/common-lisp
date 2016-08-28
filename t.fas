@@ -1,9 +1,0 @@
-(|SYSTEM|::|VERSION| '(20080430.))
-#0Y_ #0Y |CHARSET|::|UTF-8|
-#Y(#:|1 1 (FORMAT T "~a~%" ...)-1|
-   #19Y(00 00 00 00 00 00 00 00 20 01 DA 6B 01 DC 33 02 15 19 01)
-   (#Y(#:|1 1 (FORMAT T "~a~%" ...)-1-1|
-       #20Y(00 00 00 00 02 00 00 00 21 18 AE B0 31 90 AF 31 97 9E 19 04) ()
-       (|COMMON-LISP|::|T| |COMMON-LISP|::|T| |COMMON-LISP|::|T|))
-    |COMMON-LISP|::|*STANDARD-OUTPUT*| 9.)
-   (|COMMON-LISP|::|T| |COMMON-LISP|::|T| |COMMON-LISP|::|T|))
