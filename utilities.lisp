@@ -3,8 +3,8 @@
   (:export
     choose
     append1
-    )
-  )
+    ))
+
 (in-package util)
 
 (declaim
@@ -14,6 +14,8 @@
 (defun sum (lst)
   (apply #'+ lst))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; From On Lisp
 (defun last1 (lst)
   (car (last lst)))
 
@@ -188,6 +190,7 @@ Return the element and its predicate result"
             (concatenate 'string "("
                          (apply #'read-line args)
                          ")"))))
+
 (defun prompt (&rest args)
   (apply #'format *query-io* args)
   (read *query-io*))
@@ -199,23 +202,6 @@ Return the element and its predicate result"
       (if (funcall quit in)
         (return)
         (format *query-io* "~A~$" (funcall fn in))))))
-
-(defun mkstr (&rest args)
-  (with-output-to-string (s)
-    (dolist (a args) (princ a s))))
-
-(defun symb (&rest args)
-  (values (intern (apply #'mkstr args))))
-
-(defun reread (&rest args)
-  (values (read-from-string (apply #'mkstr args))))
-
-(defun explode (sym)
-  "Get a list of individual symbols contained with sym"
-  (map 'list #'(lambda (c)
-                 (intern (make-string 1
-                                      :initial-element c)))
-       (symbol-name sym)))
 
 ;; store and refer to destructive versions of function with "!"
 ; (defvar *!equivs* (make-hash-table))
@@ -302,6 +288,7 @@ Return the element and its predicate result"
      (1 ,pos)
      (0 ,zero)
      (-1 ,neg)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun string-to-chars (str)
   "Turn a string into a list of chars"
@@ -401,6 +388,7 @@ Return the element and its predicate result"
       #'fn)))
 
 (defun powerset (lst)
+  "Given a set, returns the set of all subsets of the set."
   (if (null lst) '(())
     (let ((subs (subsets (cdr lst)))
           (front (car lst)))
@@ -511,61 +499,6 @@ Return the element and its predicate result"
 
 (defun catalan (n)
   (/ (factorial (* 2 n)) (* (factorial (1+ n)) (factorial n))))
-
-(defun g!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "G!"
-                :start1 0
-                :end1 2)))
-
-(defmacro defmacro/g! (name args &rest body)
-  (let ((syms (remove-duplicates
-                (remove-if-not #'g!-symbol-p
-                               (flatten body)))))
-    `(defmacro ,name ,args
-       (let ,(mapcar
-               (lambda (s)
-                 `(,s (gensym ,(subseq
-                                 (symbol-name s)
-                                 2))))
-               syms)
-         ,@body))))
-
-(defun o!-symbol-p (s)
-  (and (symbolp s)
-       (> (length (symbol-name s)) 2)
-       (string= (symbol-name s)
-                "O!"
-                :start1 0
-                :end1 2)))
-
-(defun o!-symbol-to-g!-symbol (s)
-  (symb "G!"
-        (subseq (symbol-name s) 2)))
-
-(defmacro defmacro! (name args &rest body)
-  (let* ((os (remove-if-not #'o!-symbol-p args))
-         (gs (mapcar #'o!-symbol-to-g!-symbol os)))
-    `(defmacro/g! ,name ,args
-       `(let ,(mapcar #'list (list ,@gs) (list ,@os))
-          ,(progn ,@body)))))
-
-(defmacro! dlambda (&rest ds)
-  "Dispatching or destructuring version of lambda"
-  `(lambda (&rest ,g!args)
-     (case (car ,g!args)
-       ,@(mapcar
-           (lambda (d)
-             `(,(if (eq t (car d))
-                  t
-                  (list (car d)))
-                (apply (lambda ,@(cdr d))
-                       ,(if (eq t (car d))
-                          g!args
-                          `(cdr ,g!args)))))
-           ))))
 
 (defun print-hash-entry (key value)
   (format t "~S : ~S~%" key value))
@@ -702,4 +635,3 @@ liz => (1 2 3 4)
 (push-end 5 lass) => (4 5)
 liz => (1 2 3 4 5)
 |#
-
