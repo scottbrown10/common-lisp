@@ -1,294 +1,12 @@
 (defpackage util
   (:use :cl)
   (:export
-    choose
-    append1
     ))
 
 (in-package util)
 
-(declaim
-  (optimize debug)
-  (inline last1 single append1 conc1 mklist sum list-to-vector))
-
 (defun sum (lst)
   (apply #'+ lst))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; From On Lisp
-(defun last1 (lst)
-  (car (last lst)))
-
-(defun single (lst)
-  (and (consp lst) (not (cdr lst))))
-
-(defun append1 (lst obj)
-  (append lst (list obj)))
-
-(defun conc1 (lst obj)
-  (nconc lst (list obj)))
-
-(defun mklist (obj)
-  (if (listp obj) obj (list obj)))
-
-(defun longer (x y)
-  (labels ((compare (x y)
-                    (and (consp x)
-                         (or (null y)
-                             (compare (cdr x) (cdr y))))))
-    (if (and (listp x) (listp y))
-      (compare x y)
-      (> (length x) (length y)))))
-
-(defun filter (fn lst)
-  (let ((acc nil))
-    (dolist (x lst)
-      (let ((val (funcall fn x)))
-        (if val (push val acc))))
-    (nreverse acc)))
-
-(defun group (source n)
-"Group source into lists of size at most n. return list of all those lists."
-  (if (zerop n) (error "zero length"))
-  (labels ((rec (source acc)
-                (let ((rest (nthcdr n source)))
-                  (if (consp rest)
-                    (rec rest (cons (subseq source 0 n) acc))
-                    (nreverse (cons source acc))))))
-    (if source (rec source nil) nil)))
-
-(defun flatten (x)
-  (labels ((rec (x acc)
-                (cond ((null x) acc)
-                      ((atom x) (cons x acc))
-                      (t (rec (car x) (rec (cdr x) acc))))))
-    (rec x nil)))
-
-(defun prune (test tree)
-  (labels ((rec (tree acc)
-                (cond ((null tree) (nreverse acc))
-                      ((consp (car tree))
-                       (rec (cdr tree)
-                            (cons (rec (car tree) nil) acc)))
-                      (t (rec (cdr tree)
-                              (if (funcall test (car tree))
-                                acc
-                                (cons (car tree) acc)))))))
-  (rec tree nil)))
-
-(defun find2 (fn lst)
-"Find the first element in lst which returns true for predicate fn.
-Return the element and its predicate result"
-  (if (null lst)
-    nil
-    (let ((val (funcall fn (car lst))))
-      (if val
-        (values (car lst) val)
-        (find2 fn (cdr lst))))))
-
-(defun before (x y lst &key (test #'eql))
-  (and lst
-       (let ((first (car lst)))
-         (cond ((funcall test y first) nil)
-               ((funcall test x first) lst)
-               (t (before x y (cdr lst) :test test))))))
-
-(defun after (x y lst &key (test #'eql))
-  (let ((rest (before y x :test test)))
-    (and rest (member x rest :test test))))
-
-(defun duplicate (obj lst &key (test #'eql))
-  (member obj (cdr (member obj lst :test test))
-          :test test))
-
-(defun split-if (fn lst)
-  (let ((acc nil))
-    (do ((src lst (cdr src)))
-      ((or (null src) (funcall fn (car src)))
-       (values (nreverse acc) src))
-      (push (car src) acc))))
-
-(defun most (fn lst)
-  "A max function that uses the fn as the key to compare values in lst. Returns the max object and (fn obj)"
-  (if (null lst)
-    (values nil nil)
-    (let* ((wins (car lst))
-           (max (funcall fn wins)))
-      (dolist (obj (cdr lst))
-        (let ((score (funcall fn obj)))
-          (when (> score max)
-            (setq wins obj
-                  max score))))
-      (values wins max))))
-
-(defun best (fn lst)
-  (if (null lst)
-    nil
-    (let ((wins (car lst)))
-      (dolist (obj (cdr lst))
-        (if (funcall fn obj wins)
-          (setq wins obj)))
-      wins)))
-
-(defun mostn (fn lst)
-  (if (null lst)
-    (values nil nil)
-    (let ((result (list (car lst)))
-          (max (funcall fn (car lst))))
-      (dolist (obj (cdr lst))
-        (let ((score (funcall fn obj)))
-          (cond ((> score max)
-                 (setq max score
-                       result (list obj)))
-                ((= score max)
-                 (push obj result)))))
-      (values (nreverse result) max))))
-
-(defun map0-n (fn n)
-  (mapa-b fn 0 n))
-
-(defun map1-n (fn n)
-  (mapa-b fn 1 n))
-
-(defun mapa-b (fn a b &optional (step 1))
-  "Call fn for each between number a and b, inclusive,
-  incrementing by step each time. Can only count up"
-  (do ((i a (+ i step))
-       (result nil))
-    ((> i b) (nreverse result))
-    (push (funcall fn i) result)))
-
-(defun map-> (fn start test-fn succ-fn)
-  (do ((i start (funcall succ-fn i))
-       (result nil))
-    ((funcall test-fn i) (nreverse result))
-    (push (funcall fn i) result)))
-
-(defun mappend (fn &rest lsts)
-  "Nondestructive mapcan"
-  (apply #'append (apply #'mapcar fn lsts)))
-
-(defun mapcars (fn &rest lsts)
-  "Mapcar over several lists"
-  (let ((result nil))
-    (dolist (lst lsts)
-      (dolist (obj lst)
-        (push (funcall fn obj) result)))
-    (nreverse result)))
-
-;; recursive mapcar
-(defun rmapcar (fn &rest args)
-  (if (some #'atom args)
-    (apply fn args)
-    (apply #'mapcar
-           #'(lambda (&rest args)
-               (apply #'rmapcar fn args))
-           args)))
-
-(defun readlist (&rest args)
-  (values (read-from-string
-            (concatenate 'string "("
-                         (apply #'read-line args)
-                         ")"))))
-
-(defun prompt (&rest args)
-  (apply #'format *query-io* args)
-  (read *query-io*))
-
-(defun break-loop (fn quit &rest args)
-  (format *query-io* "Entering break-loop. ~%")
-  (loop
-    (let ((in (apply #'prompt args)))
-      (if (funcall quit in)
-        (return)
-        (format *query-io* "~A~$" (funcall fn in))))))
-
-;; store and refer to destructive versions of function with "!"
-; (defvar *!equivs* (make-hash-table))
-; (defun ! (fn)
-;   (or (gethash fn *!equivs*) fn))
-; (defun def! (fn fn!)
-;   (setf (gethash fn *!equivs*) fn!))
-
-(defun memoize (fn)
-  (let ((cache (make-hash-table :test #'equal)))
-    #'(lambda (&rest args)
-        (multiple-value-bind (val win) (gethash args cache)
-          (if win
-            val
-            (setf (gethash args cache)
-                  (apply fn args)))))))
-
-(defun compose (&rest fns)
-  "Composition of functions"
-  (if fns
-    (let ((fn1 (last1 fns))
-      (fns (butlast fns)))
-      #'(lambda (&rest args)
-          (reduce #'funcall fns
-                  :from-end t
-                  :initial-value (apply fn1 args))))
-    #'identify))
-
-(defun fif (if then &optional else)
-  #'(lambda (x)
-      (if (funcall if x)
-        (funcall then x)
-        (if else (funcall else x)))))
-
-(defun fint (fn &rest fns)
-  "Function Intersection. Returns a function that returns true if ALL inner funcs return true for given arg"
-  (if (null fns)
-    fn
-    (let ((chain (apply #'fint fns)))
-      #'(lambda (x)
-          (and (funcall fn x) (funcall chain x))))))
-
-(defun fun (fn &rest fns)
-  "Function Union. Returns a function that returns true if ANY inner funcs return true for given arg"
-  (if (null fns)
-    fn
-    (let ((chain (apply #'fun fns)))
-      #'(lambda (x)
-          (or (funcall fn x) (funcall chain x))))))
-
-;; list recurser
-(defun lrec (rec &optional base)
-  (labels ((self (lst)
-                 (if (null lst)
-                   (if (functionp base)
-                     (funcall base)
-                     base)
-                   (funcall rec (car lst)
-                            #'(lambda ()
-                                (self (cdr lst)))))))
-    #'self))
-
-;; tree recurser
-(defun trec (rec &optional (base #'identify))
-  (labels
-    ((self (tree)
-           (if (atom tree)
-             (if (functionp base)
-               (funcall base tree)
-               base)
-             (funcall rec tree
-                      #'(lambda ()
-                          (self (car tree)))
-                      #'(lambda ()
-                          (if (cdr tree)
-                            (self (cdr tree))))))))
-     #'self))
-
-(defmacro nil! (var)
-  `(setq ,var nil))
-
-(defmacro nif (expr pos zero neg)
-  `(case (truncate (signum ,expr))
-     (1 ,pos)
-     (0 ,zero)
-     (-1 ,neg)))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun string-to-chars (str)
   "Turn a string into a list of chars"
@@ -539,7 +257,7 @@ Return the element and its predicate result"
   (- (integer-length n) (logcount n)))
 
 (defun all-1s-p (n)
-  "True if there exists an x such that 2**x - 1= n (equivalently, n matches pattern 0*1*)"
+  "True if there exists an x such that 2**x - 1= n (equivalently, n in binary matches pattern 0*1*)"
   (= (integer-length n) (logcount n)))
 
 (defun highest-multiple-of-m-below-n (m)
@@ -635,3 +353,27 @@ liz => (1 2 3 4)
 (push-end 5 lass) => (4 5)
 liz => (1 2 3 4 5)
 |#
+
+(defun merge-point (lst1 lst2)
+  "Finds the point after which lst1 and lst2 are equal.
+   Returns the unique prefix of lst1, the unique prefix of lst2, and the common suffix."
+  (do ((l1 (reverse lst1) (cdr l1))
+       (l2 (reverse lst2) (cdr l2))
+       (merge-point '()))
+    ((or (and (null l1) (null l2)) (not (eq (car l1) (car l2))))
+     (values (reverse l1) (reverse l2) merge-point))
+    (push (car l1) merge-point))
+
+(let ((l1 '(a b c x y z))
+       (l2 '(g h i x y z)))
+  (merge-point l1 l2))
+
+(let ((l1 '(a b c x y r))
+       (l2 '(g h i x y t)))
+  (merge-point l1 l2))
+
+(let ((l1 '(a b c x y z))
+       (l2 '(a b c x y z)))
+  (merge-point l1 l2))
+
+(merge-point '(y z) '(g h i x y z))
